@@ -38,8 +38,6 @@ export default function CODMCoach() {
 
   const send = async () => {
     if (loading || (!input.trim() && images.length === 0)) return;
-    
-    // Create the content as a string for chat.js
     const userMsg = { role: "user", content: input };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
@@ -50,28 +48,26 @@ export default function CODMCoach() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Sending just the messages array as expected by your chat.js
         body: JSON.stringify({ 
-            messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })) 
+          messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })) 
         }),
       });
       
       const data = await res.json();
       
-      // Look for the text inside your specific chat.js response format
+      // Fixed logic to read the "text" field from your chat.js JSON response
       let replyText = data.text || data.content;
       
-      // If the response is the complex object from your chat.js (with JSON inside)
       if (typeof replyText === 'string' && replyText.includes('{"type"')) {
           try {
               const parsed = JSON.parse(replyText.replace(/```json|```/g, "").trim());
               replyText = parsed.text;
-          } catch(e) { /* use raw text */ }
+          } catch(e) { /* use raw */ }
       }
 
-      setMessages(prev => [...prev, { role: "assistant", content: replyText || "Coach is thinking... try again." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: replyText || "System ready. Ask me anything." }]);
     } catch (e) {
-      setMessages(prev => [...prev, { role: "assistant", content: "Error: Verify your API key in Vercel." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "Error: Verify API key in Vercel." }]);
     } finally {
       setLoading(false);
     }
@@ -81,7 +77,6 @@ export default function CODMCoach() {
     <div style={{height:"100vh", display:"flex", flexDirection:"column", background:C.bg, color:C.text, fontFamily:"sans-serif", overflow:"hidden"}}>
       <Head><title>COD COACH AI</title></Head>
 
-      {/* HEADER */}
       <div style={{padding:"12px 20px", background:C.surface, borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
         <div style={{display:"flex", alignItems:"center", gap:10}}>
           <div style={{width:10, height:10, borderRadius:"50%", background:C.orange, boxShadow:`0 0 10px ${C.orange}`}} />
@@ -95,7 +90,6 @@ export default function CODMCoach() {
       </div>
 
       <div style={{flex:1, display:"flex", overflow:"hidden"}}>
-        {/* CHAT AREA */}
         <div style={{flex:1, display:(isMobile && showTools) ? "none" : "flex", flexDirection:"column"}}>
           <div style={{flex:1, overflowY:"auto", padding:20, display:"flex", flexDirection:"column", gap:15}}>
             {messages.map((m, i) => (
@@ -109,7 +103,6 @@ export default function CODMCoach() {
             <div ref={chatEndRef} />
           </div>
 
-          {/* INPUT AREA */}
           <div style={{padding:15, background:C.surface, borderTop:`1px solid ${C.border}`}}>
             {images.length > 0 && (
               <div style={{display:"flex", gap:10, marginBottom:10}}>
@@ -124,24 +117,15 @@ export default function CODMCoach() {
               <input 
                 value={input} onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key==="Enter" && send()}
-                placeholder="Message Coach..."
+                placeholder="Ask your coach..."
                 style={{flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 15px", color:C.white, outline:"none"}}
               />
-              <button onClick={send} style={{background:C.orange, border:"none", borderRadius:8, width:44, height:44, color:"#000", fontWeight:900, fontSize:20}}>
-                ↑
-              </button>
+              <button onClick={send} style={{background:C.orange, border:"none", borderRadius:8, width:44, height:44, color:"#000", fontWeight:900, fontSize:20}}>↑</button>
             </div>
           </div>
         </div>
 
-        {/* SIDEBAR TOOLS */}
-        <div style={{
-          display:(isMobile && !showTools) ? "none" : "flex",
-          width:isMobile ? "100%" : "300px",
-          background:C.surface,
-          borderLeft:isMobile ? "none" : `1px solid ${C.border}`,
-          flexDirection:"column", padding:20, gap:20
-        }}>
+        <div style={{display:(isMobile && !showTools) ? "none" : "flex", width:isMobile ? "100%" : "300px", background:C.surface, borderLeft:isMobile ? "none" : `1px solid ${C.border}`, flexDirection:"column", padding:20, gap:20}}>
           <div style={{fontSize:14, fontWeight:900, color:C.orange, textAlign:"center"}}>SENSITIVITY HUB</div>
           <div style={{background:C.panel, padding:15, borderRadius:12, border:`1px solid ${C.border}`}}>
             <div style={{fontSize:12, color:C.muted, marginBottom:10}}>Base Value: {baseSens}</div>
