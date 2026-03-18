@@ -38,7 +38,9 @@ export default function CODMCoach() {
 
   const send = async () => {
     if (loading || (!input.trim() && images.length === 0)) return;
-    const userMsg = { role: "user", content: input, images: [...images] };
+    
+    // Create the content as a string for chat.js
+    const userMsg = { role: "user", content: input };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setImages([]);
@@ -48,14 +50,28 @@ export default function CODMCoach() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })) }),
+        // Sending just the messages array as expected by your chat.js
+        body: JSON.stringify({ 
+            messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })) 
+        }),
       });
+      
       const data = await res.json();
-      // This line fixes the "AI doesn't respond" issue:
-      const reply = data.text || data.content || (data.choices && data.choices[0].message.content) || "System Error: No response.";
-      setMessages(prev => [...prev, { role: "assistant", content: reply }]);
+      
+      // Look for the text inside your specific chat.js response format
+      let replyText = data.text || data.content;
+      
+      // If the response is the complex object from your chat.js (with JSON inside)
+      if (typeof replyText === 'string' && replyText.includes('{"type"')) {
+          try {
+              const parsed = JSON.parse(replyText.replace(/```json|```/g, "").trim());
+              replyText = parsed.text;
+          } catch(e) { /* use raw text */ }
+      }
+
+      setMessages(prev => [...prev, { role: "assistant", content: replyText || "Coach is thinking... try again." }]);
     } catch (e) {
-      setMessages(prev => [...prev, { role: "assistant", content: "Check your API key in Vercel settings." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "Error: Verify your API key in Vercel." }]);
     } finally {
       setLoading(false);
     }
@@ -93,7 +109,7 @@ export default function CODMCoach() {
             <div ref={chatEndRef} />
           </div>
 
-          {/* INPUT AREA WITH UPLOAD */}
+          {/* INPUT AREA */}
           <div style={{padding:15, background:C.surface, borderTop:`1px solid ${C.border}`}}>
             {images.length > 0 && (
               <div style={{display:"flex", gap:10, marginBottom:10}}>
@@ -108,7 +124,7 @@ export default function CODMCoach() {
               <input 
                 value={input} onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key==="Enter" && send()}
-                placeholder="Ask your coach..."
+                placeholder="Message Coach..."
                 style={{flex:1, background:C.bg, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 15px", color:C.white, outline:"none"}}
               />
               <button onClick={send} style={{background:C.orange, border:"none", borderRadius:8, width:44, height:44, color:"#000", fontWeight:900, fontSize:20}}>
@@ -126,14 +142,14 @@ export default function CODMCoach() {
           borderLeft:isMobile ? "none" : `1px solid ${C.border}`,
           flexDirection:"column", padding:20, gap:20
         }}>
-          <div style={{fontSize:14, fontWeight:900, color:C.orange, textAlign:"center"}}>SENSITIVITY CALCULATOR</div>
+          <div style={{fontSize:14, fontWeight:900, color:C.orange, textAlign:"center"}}>SENSITIVITY HUB</div>
           <div style={{background:C.panel, padding:15, borderRadius:12, border:`1px solid ${C.border}`}}>
-            <div style={{fontSize:12, color:C.muted, marginBottom:10}}>Base Sensitivity: {baseSens}</div>
+            <div style={{fontSize:12, color:C.muted, marginBottom:10}}>Base Value: {baseSens}</div>
             <input type="range" min="40" max="120" value={baseSens} onChange={e => setBaseSens(parseInt(e.target.value))} style={{width:"100%", accentColor:C.orange}} />
             <div style={{marginTop:15, display:"grid", gridTemplateColumns:"1fr 1fr", gap:8}}>
               {[
-                {n:"Fixed", v:baseSens}, {n:"ADS", v:Math.round(baseSens*1.25)},
-                {n:"Sniper", v:Math.round(baseSens*0.48)}, {n:"3X Scope", v:Math.round(baseSens*0.85)}
+                {n:"Standard", v:baseSens}, {n:"ADS", v:Math.round(baseSens*1.25)},
+                {n:"Sniper", v:Math.round(baseSens*0.48)}, {n:"Tactical", v:Math.round(baseSens*0.9)}
               ].map(x => (
                 <div key={x.n} style={{background:C.bg, padding:10, borderRadius:8, textAlign:"center", border:`1px solid ${C.border}`}}>
                   <div style={{fontSize:10, color:C.muted}}>{x.n}</div>
